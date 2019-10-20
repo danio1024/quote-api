@@ -1,27 +1,62 @@
 # This file is the entry point to configure your own services.
 # Files in the packages/ subdirectory configure your dependencies.
-
-# Put parameters here that don't need to change on each machine where the app is deployed
-# https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
+    quotes_file_location: '%kernel.project_dir%/data/quotes.json'
 
 services:
-    # default configuration for services in *this* file
     _defaults:
-        autowire: true      # Automatically injects dependencies in your services.
-        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        autowire: true
+        autoconfigure: true
 
-    # makes classes in src/ available to be used as services
-    # this creates a service per class whose id is the fully-qualified class name
     App\:
-        resource: '../src/*'
-        exclude: '../src/{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
+        resource: '../src/App/*'
+        exclude: '../src/App/{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
 
-    # controllers are imported separately to make sure services can be injected
-    # as action arguments even if you don't extend any base controller class
+    QuotesApi\Core\QueryBus\QueryBus:
+        alias: 'Infrastructure\QueryBus\MessengerQueryBus'
+        public: true
+
     App\Controller\:
-        resource: '../src/Controller'
+        resource: '../src/App/Controller'
         tags: ['controller.service_arguments']
 
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
+    Infrastructure\:
+        resource: '../src/Infrastructure/*'
+
+    QuotesApi\:
+        resource: '../src/QuotesApi/*'
+        exclude: '../src/QuotesApi/**/{Model,Query/Query,Query/Result}'
+
+    command_handlers:
+        namespace: 'QuotesApi\'
+        resource: '%kernel.project_dir%/src/QuotesApi/**/*CommandHandler.php'
+        autoconfigure: false
+        tags:
+            - { name: messenger.message_handler, bus: command.bus }
+
+    query_handlers:
+        namespace: 'QuotesApi\'
+        resource: '%kernel.project_dir%/src/QuotesApi/**/*QueryHandler.php'
+        autoconfigure: false
+        tags:
+            - { name: messenger.message_handler, bus: query.bus }
+
+    Infrastructure\Quote\FileQuoteProvider:
+        arguments:
+            $quotesFile: '%quotes_file_location%'
+
+    Infrastructure\Quote\CachingQuoteProvider:
+        arguments:
+            $innerProvider: '@Infrastructure\Quote\FileQuoteProvider'
+
+    QuotesApi\Model\ShoutingQuoteProvider:
+        arguments:
+            $innerProvider: '@Infrastructure\Quote\CachingQuoteProvider'
+
+    QuotesApi\Model\QuoteProvider: '@QuotesApi\Model\ShoutingQuoteProvider'
+
+    Predis\Client:
+        arguments:
+            - '%env(REDIS_DSN)%'
+
+    Infrastructure\Cache\Cache: '@Infrastructure\Cache\PredisCache'

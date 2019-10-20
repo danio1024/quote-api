@@ -1,0 +1,4 @@
+services:
+    QuotesApi\Model\ShoutingQuoteProvider:
+        arguments:
+            $innerProvider: '@Infrastructure\Quote\FileQuoteProvider'

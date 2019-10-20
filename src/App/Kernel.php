@@ -27,7 +27,27 @@ class Kernel extends BaseKernel
 
     public function getProjectDir(): string
     {
-        return \dirname(__DIR__);
+        return \dirname(__DIR__)  . '/../';
+    }
+
+    public function getLogDir(): string
+    {
+        // When on the lambda only /tmp is writeable
+        if (getenv('LAMBDA_TASK_ROOT') !== false) {
+            return '/tmp/log/';
+        }
+
+        return parent::getLogDir();
+    }
+
+    public function getCacheDir(): string
+    {
+        // When on the lambda only /tmp is writeable
+        if (getenv('LAMBDA_TASK_ROOT') !== false) {
+            return '/tmp/cache/'.$this->environment;
+        }
+
+        return parent::getCacheDir();
     }
 
     protected function configureContainer(ContainerBuilder $container, LoaderInterface $loader): void

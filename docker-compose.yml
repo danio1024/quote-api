@@ -13,3 +13,6 @@ services:
     volumes:
       - .:/var/www/app
       - ./docker/nginx.conf.d/:/etc/nginx/conf.d/
+
+  redis:
+    image: redis:latest
